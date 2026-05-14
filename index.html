@@ -3805,11 +3805,17 @@ if (ttsVolSlider) {
   document.addEventListener('touchmove', cancel);
 })();
 
-// ─── Three-finger tap → toggle native fullscreen (hides browser chrome) ───
-// Most mobile browsers won't let JS hide the address bar without the
-// Fullscreen API. A 3-finger tap is the trigger gesture: easy to remember,
-// hard to do accidentally. Tap again to exit.
-(function setupThreeFingerFullscreen() {
+// ─── Triple tap → toggle native fullscreen (hides browser chrome) ───
+// Mobile browsers won't let JS hide the URL bar / nav bar without the
+// Fullscreen API. Three quick taps on empty canvas area is the trigger:
+// easy to remember, hard to do accidentally, doesn't conflict with the
+// mic's push-to-talk (we ignore taps that land on .mic or controls).
+//
+// Caveat: iOS Safari's Fullscreen API only works for <video> elements,
+// not arbitrary DOM. On iPhone Safari this will be a no-op — Apple users
+// need Add to Home Screen for true fullscreen. Works on Chrome (Android
+// & desktop), Samsung Internet, Edge, Firefox.
+(function setupTripleTapFullscreen() {
   function toggleNativeFullscreen() {
     const el = document.documentElement;
     const isFs = document.fullscreenElement || document.webkitFullscreenElement;
@@ -3820,19 +3826,82 @@ if (ttsVolSlider) {
       const reqFn = el.requestFullscreen || el.webkitRequestFullscreen;
       if (reqFn) {
         reqFn.call(el).catch(err => console.warn('[fs] denied:', err.message));
+      } else {
+        // No Fullscreen API — surface a hint instead of failing silently.
+        showFsHint('Tap Share → Add to Home Screen for fullscreen');
       }
     }
   }
-  document.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length === 3) {
+
+  // Tiny toast so the user gets feedback that the gesture registered.
+  let hintEl = null, hintTimer = null;
+  function showFsHint(text) {
+    if (!hintEl) {
+      hintEl = document.createElement('div');
+      hintEl.style.cssText =
+        'position:fixed;left:50%;top:24px;transform:translateX(-50%);' +
+        'background:rgba(0,0,0,0.7);color:#fff;padding:8px 14px;' +
+        'border-radius:999px;font:500 12px/1 -apple-system,system-ui,sans-serif;' +
+        'letter-spacing:0.04em;z-index:9999;pointer-events:none;' +
+        'opacity:0;transition:opacity 0.2s ease;';
+      document.body.appendChild(hintEl);
+    }
+    hintEl.textContent = text;
+    hintEl.style.opacity = '1';
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { hintEl.style.opacity = '0'; }, 1800);
+  }
+
+  // Skip taps on interactive elements so triple-tapping the mic etc.
+  // doesn't trigger fullscreen mid-conversation.
+  function isInteractive(target) {
+    if (!target || !target.closest) return false;
+    return !!target.closest(
+      '.mic, button, input, select, textarea, a, .controls, .panel, .debug-hud'
+    );
+  }
+
+  const TAP_WINDOW = 500;     // ms allowed between consecutive taps
+  const TAP_MAX_MOVE = 14;    // px — anything more = drag, not a tap
+  let taps = [];              // rolling list of recent {t, x, y}
+  let downAt = 0, downX = 0, downY = 0;
+
+  function getXY(e) {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX || 0, y: e.clientY || 0 };
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (isInteractive(e.target)) return;
+    const p = getXY(e);
+    downAt = performance.now();
+    downX = p.x; downY = p.y;
+  }, true);
+
+  document.addEventListener('pointerup', (e) => {
+    if (isInteractive(e.target)) return;
+    const now = performance.now();
+    const p = getXY(e);
+    // Reject drags / long presses
+    if (now - downAt > 350) { taps = []; return; }
+    if (Math.hypot(p.x - downX, p.y - downY) > TAP_MAX_MOVE) { taps = []; return; }
+
+    // Drop taps older than the window
+    taps = taps.filter(t => now - t.t < TAP_WINDOW);
+    taps.push({ t: now, x: p.x, y: p.y });
+
+    if (taps.length >= 3) {
+      taps = [];
       e.preventDefault();
       toggleNativeFullscreen();
     }
-  }, { passive: false });
-  // Desktop fallback: F key
+  }, true);
+
+  // Desktop fallback: F key still works
   document.addEventListener('keydown', (e) => {
     if (e.key === 'f' || e.key === 'F') {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
       toggleNativeFullscreen();
     }
   });
