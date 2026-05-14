@@ -50,38 +50,98 @@
     -webkit-touch-callout: none;
   }
 
-  /* ─── Default layout: iPhone 17 Pro mockup (desktop) ─── */
-  /* iPhone 17 Pro is famous for razor-thin uniform bezels (~4mm in reality).
-     Translating to our 390px-wide mockup that's ~5–6px of chrome.
-     Screen corners are also more rounded on the 17 generation. */
+  /* ─── Default layout: iPhone 17 Pro mockup, black titanium ─── */
+  /* Real device cues:
+     - Titanium frame in black with subtle chamfer highlight
+     - Subtle vertical gradient on the frame (top lighter charcoal, bottom darker — light catches the chamfer)
+     - Thin dark inner bezel ring between frame and screen
+     - Visible side hardware: Action button + volume rocker on the left, power on the right
+     - Camera lens dots inside the dynamic island */
   .phone {
     position: relative;
     width: 390px; height: 822px;
-    background: #1c1c1c;
+    /* Vertical gradient simulates the polished titanium catching light at the top edge */
+    background:
+      linear-gradient(180deg,
+        #3a3a3c 0%,
+        #2a2a2c 18%,
+        #1a1a1c 50%,
+        #242426 82%,
+        #141416 100%);
     border-radius: 58px;
-    padding: 5px;
-    /* Layered shadows simulate the titanium frame's polished edge */
+    padding: 6px;
+    /* Layered shadows: outer drop shadow + chamfer rim highlight + dark inner bezel */
     box-shadow:
-      0 0 0 1px #3a3a3a,
-      0 0 0 2px #0e0e0e,
-      0 50px 100px rgba(0,0,0,0.30),
-      0 18px 36px rgba(0,0,0,0.18);
-  }
-  /* Side hardware buttons — smaller, more flush */
-  .phone::before {
-    content: ""; position: absolute; left: -2px; top: 170px;
-    width: 2px; height: 56px; background: #1c1c1c; border-radius: 1.5px 0 0 1.5px;
-  }
-  .phone::after  {
-    content: ""; position: absolute; right: -2px; top: 200px;
-    width: 2px; height: 76px; background: #1c1c1c; border-radius: 0 1.5px 1.5px 0;
+      /* Top chamfer highlight (catches light) */
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      /* Bottom chamfer shadow */
+      inset 0 -1px 0 rgba(0,0,0,0.6),
+      /* Subtle outer rim outline */
+      0 0 0 0.5px rgba(0,0,0,0.8),
+      /* Drop shadow on page */
+      0 50px 100px rgba(0,0,0,0.40),
+      0 20px 40px rgba(0,0,0,0.22);
   }
 
+  /* ─── Left side hardware: Action button (top) + volume up + volume down ─── */
+  .phone::before {
+    content: "";
+    position: absolute;
+    left: -2.5px;
+    top: 130px;
+    width: 2.5px;
+    height: 26px;
+    background: linear-gradient(180deg, #2e2e30, #161618);
+    border-radius: 1.5px 0 0 1.5px;
+    box-shadow: inset 1px 0 0 rgba(0,0,0,0.6);
+  }
+  /* Right side hardware: Camera Control + power */
+  .phone::after {
+    content: "";
+    position: absolute;
+    right: -2.5px;
+    top: 195px;
+    width: 2.5px;
+    height: 70px;
+    background: linear-gradient(180deg, #2e2e30, #161618);
+    border-radius: 0 1.5px 1.5px 0;
+    box-shadow: inset -1px 0 0 rgba(0,0,0,0.6);
+  }
+
+  /* Extra side buttons via decorative inner spans on .phone (volume rocker pieces) */
+  .phone-button {
+    position: absolute;
+    background: linear-gradient(180deg, #2e2e30, #161618);
+    box-shadow: inset 1px 0 0 rgba(0,0,0,0.6);
+    pointer-events: none;
+  }
+  .phone-button.left {
+    left: -2.5px;
+    width: 2.5px;
+    border-radius: 1.5px 0 0 1.5px;
+  }
+  .phone-button.right {
+    right: -2.5px;
+    width: 2.5px;
+    border-radius: 0 1.5px 1.5px 0;
+    box-shadow: inset -1px 0 0 rgba(0,0,0,0.6);
+  }
+  /* Volume up */
+  .phone-button.vol-up   { top: 175px; height: 50px; }
+  /* Volume down */
+  .phone-button.vol-down { top: 240px; height: 50px; }
+
+  /* The screen sits inside the black frame with a thin dark inner bezel ring */
   .screen {
-    position: relative; width: 100%; height: 100%;
-    border-radius: 53px;
+    position: relative;
+    width: 100%; height: 100%;
+    border-radius: 52px;
     overflow: hidden;
-    background: #e6efd9;
+    background: #0a0a0a;
+    /* Dark inner bezel — the subtle black ring between titanium frame and active display */
+    box-shadow:
+      inset 0 0 0 2px #050505,
+      inset 0 0 0 3px #111;
   }
 
   /* ─── Fullscreen mode: edge-to-edge (mobile, or desktop toggle) ─── */
@@ -119,9 +179,33 @@
   }
 
   .island {
-    position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-    width: 116px; height: 32px; background: #000; border-radius: 20px;
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 118px; height: 34px;
+    background: #000;
+    border-radius: 20px;
     z-index: 30;
+    /* Subtle inner highlight on the top edge of the pill */
+    box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+  }
+  /* Front camera lens — slightly visible dark disc with a faint glassy ring */
+  .island-camera {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #2a2a2a 0%, #0a0a0a 60%, #000 100%);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      inset 0 0 2px rgba(80,90,120,0.15);
+  }
+  /* Face ID dot projector — smaller, even subtler */
+  .island-sensor {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #1a1a1a 0%, #050505 100%);
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
   }
 
   /* Mic — smaller, centered, push-to-talk experience */
@@ -612,6 +696,9 @@
           <option value="preset-7">Image preset 7</option>
           <option value="preset-8">Image preset 8</option>
           <option value="preset-9">Image preset 9</option>
+          <option value="aurora">Aurora (green / beige / blue / pink)</option>
+          <option value="sunset">Sunset (coral / peach / lilac)</option>
+          <option value="meadow">Meadow (sage / mint / sky)</option>
           <option value="mint">Mint cyan gradient</option>
           <option value="warm">Warm peach gradient</option>
           <option value="cool">Cool blue gradient</option>
@@ -670,6 +757,23 @@
         <label>Gradient radius</label>
         <input type="range" id="ctl-bg-grad-r" min="0.3" max="1.5" step="0.01" value="0.85">
         <span class="val" id="ctl-bg-grad-r-v">0.85</span>
+      </div>
+      <div class="row">
+        <label>Drift animation</label>
+        <select id="ctl-bg-drift-on">
+          <option value="1">On (breathing)</option>
+          <option value="0">Off (locked)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Drift amount</label>
+        <input type="range" id="ctl-bg-drift-amt" min="0" max="0.1" step="0.005" value="0.025">
+        <span class="val" id="ctl-bg-drift-amt-v">0.025</span>
+      </div>
+      <div class="row">
+        <label>Drift speed</label>
+        <input type="range" id="ctl-bg-drift-speed" min="0.01" max="0.3" step="0.01" value="0.07">
+        <span class="val" id="ctl-bg-drift-speed-v">0.07</span>
       </div>
 
       <!-- Custom gradient: 5 color stops -->
@@ -969,8 +1073,15 @@
 </div>
 
 <div class="phone">
+  <!-- Side hardware buttons (left: action + volume up + volume down; right: power + camera control) -->
+  <span class="phone-button left vol-up" aria-hidden="true"></span>
+  <span class="phone-button left vol-down" aria-hidden="true"></span>
+
   <div class="screen" id="screen">
-    <div class="island"></div>
+    <div class="island">
+      <span class="island-camera" aria-hidden="true"></span>
+      <span class="island-sensor" aria-hidden="true"></span>
+    </div>
 
     <canvas id="gl-canvas"></canvas>
 
@@ -1248,7 +1359,14 @@ const TUNE = {
   fxLightCrestTint: [0.5, 0.85, 1.0],  // body glow color
 
   /* ─── Background ─── */
-  bgPreset: 'preset-1',           // default to first preset image
+  bgPreset: 'aurora',             // Gen-Z gradient by default (green/beige/blue/pink soft center)
+  /* Animated gradient drift — slow, subtle breathing of the center point and
+     radius. Default on for the dreamy feel; set bgDriftEnabled false to lock
+     the gradient in place. */
+  bgDriftEnabled: true,
+  bgDriftAmount: 0.025,           // max offset (UV fraction) the center wanders
+  bgDriftRadiusAmount: 0.04,      // max radius pulse (UV fraction)
+  bgDriftSpeed: 0.07,             // radians/sec — very slow drift
   bgImage: null,                  // HTMLImageElement when custom image uploaded or preset loaded
   bgImageOpacity: 1.0,            // full opacity by default (images look intentional)
   bgImageBlur: 40,                // px of blur applied to image — strong by default per design
@@ -1260,6 +1378,7 @@ const TUNE = {
   bgGradientRadius: 0.85,         // radius as fraction of width
   bgNoiseAmount: 0.31,            // 0..1 film grain intensity (over all backgrounds)
   bgNoiseScale: 1,                // 1 = 1:1 pixel noise, higher = chunkier grain
+  bgNoiseAmountMobile: 0.20,      // softer noise on mobile (small screens amplify grain)
 
   /* ─── State 2 essence flash (kept for fallback, may not show in v3) ─── */
   essenceFadeIn: 0.55,
@@ -1298,6 +1417,8 @@ function applyLayoutMode(mode) {
                        (mode === 'auto' && (isTouchDevice() || window.innerWidth < 700));
   if (isFullscreen) {
     document.body.classList.add('fullscreen-mode');
+    // On small screens grain reads chunkier and harsher — soften it by default
+    TUNE.bgNoiseAmount = TUNE.bgNoiseAmountMobile;
   } else {
     document.body.classList.remove('fullscreen-mode');
   }
@@ -1309,17 +1430,41 @@ applyLayoutMode(TUNE.layoutMode);
 /* Use the ACTUAL screen container size, not hardcoded values.
    In mockup mode this is the 368×778 inner screen. In fullscreen mode
    this is 100dvw × 100dvh. The shader, mic position, ripple physics, etc.
-   all measure from this so they always render correctly. */
-const screenRect = document.getElementById('screen').getBoundingClientRect();
-const W_CSS = screenRect.width;
-const H_CSS = screenRect.height;
+   all measure from this so they always render correctly.
+
+   IMPORTANT (mobile): on first load the dynamic viewport (`100dvh`) can
+   be inaccurate because the browser address bar is in flux. We give layout
+   one frame to settle before reading, which fixes the off-center gradient
+   bug on mobile Chrome/Safari. */
+function measureScreen() {
+  const r = document.getElementById('screen').getBoundingClientRect();
+  return { w: r.width, h: r.height };
+}
+let _measurement = measureScreen();
+let W_CSS = _measurement.w;
+let H_CSS = _measurement.h;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
 const src = document.createElement('canvas');
-src.width = W_CSS * DPR;
+src.width  = W_CSS * DPR;
 src.height = H_CSS * DPR;
 const sctx = src.getContext('2d');
 sctx.scale(DPR, DPR);
+
+/* Re-measure after one frame in case the viewport was still settling.
+   This is what cures the "gradient shifted right on mobile" bug — the
+   first measurement happens before mobile browsers finalize their
+   viewport calculations. */
+requestAnimationFrame(() => {
+  const m = measureScreen();
+  if (Math.abs(m.w - W_CSS) > 0.5 || Math.abs(m.h - H_CSS) > 0.5) {
+    W_CSS = m.w; H_CSS = m.h;
+    src.width  = W_CSS * DPR;
+    src.height = H_CSS * DPR;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.scale(DPR, DPR);
+  }
+});
 
 const ui = {
   // Zero/User staggered text (state 3 / state 1)
@@ -1402,6 +1547,27 @@ function ensureNoiseTexture() {
 }
 
 const BG_PRESETS = {
+  /* Aurora — Gen-Z hero gradient. Green/beige/blue/pink soft watercolor center
+     that breathes with subtle animation. This is the new default. */
+  aurora: { outer: '#f0eee8', stops: [
+    [0.00, '#a8d99c'],  // soft sage green at the very center
+    [0.16, '#c5e0b4'],  // mint cream
+    [0.32, '#e8d8b8'],  // warm beige
+    [0.50, '#dcc8d4'],  // dusty pink
+    [0.68, '#c8d5e0'],  // cool blue mist
+    [0.85, '#e4e2db'],  // neutral cream
+    [1.00, '#f0eee8'],  // bone outer
+  ]},
+  /* Sunset — warmer Gen-Z palette: coral / peach / lilac / cream */
+  sunset: { outer: '#f5ebe0', stops: [
+    [0.00, '#ffb3a7'], [0.20, '#ffc9b8'], [0.40, '#e8c4d4'],
+    [0.62, '#d9c8e0'], [0.82, '#ebe0dc'], [1.00, '#f5ebe0'],
+  ]},
+  /* Meadow — cooler Gen-Z palette: sage / mint / sky / lavender */
+  meadow: { outer: '#e8ecdc', stops: [
+    [0.00, '#b8d9a8'], [0.20, '#c9e0c0'], [0.40, '#d4dccc'],
+    [0.62, '#cad4d8'], [0.82, '#dde0d8'], [1.00, '#e8ecdc'],
+  ]},
   mint:   { outer: '#e6efd9', stops: [
     [0.00, '#2bc7ff'], [0.20, '#5dd9d6'], [0.42, '#8fe6b8'],
     [0.65, '#b8eec2'], [0.88, '#dceac8'], [1.00, '#e6efd9'],
@@ -1468,9 +1634,16 @@ function paintSource() {
     const stops = TUNE.bgCustomStops;
     ctx.fillStyle = stops[stops.length - 1];
     ctx.fillRect(0, 0, W_CSS, H_CSS);
-    const cx = W_CSS * TUNE.bgGradientCenterX;
-    const cy = H_CSS * TUNE.bgGradientCenterY;
-    const r = W_CSS * TUNE.bgGradientRadius;
+    // Subtle drift of the center + radius for a breathing gradient feel
+    const t = performance.now() / 1000;
+    const drift = TUNE.bgDriftEnabled ? TUNE.bgDriftAmount : 0;
+    const driftR = TUNE.bgDriftEnabled ? TUNE.bgDriftRadiusAmount : 0;
+    const dx = Math.sin(t * TUNE.bgDriftSpeed) * drift;
+    const dy = Math.cos(t * TUNE.bgDriftSpeed * 0.73) * drift;
+    const dr = Math.sin(t * TUNE.bgDriftSpeed * 0.5) * driftR;
+    const cx = W_CSS * (TUNE.bgGradientCenterX + dx);
+    const cy = H_CSS * (TUNE.bgGradientCenterY + dy);
+    const r  = W_CSS * (TUNE.bgGradientRadius + dr);
     const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, r);
     g.addColorStop(0.00, stops[0]);
     g.addColorStop(0.25, stops[1]);
@@ -1480,12 +1653,19 @@ function paintSource() {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W_CSS, H_CSS);
   } else {
-    const preset = BG_PRESETS[TUNE.bgPreset] || BG_PRESETS.mint;
+    const preset = BG_PRESETS[TUNE.bgPreset] || BG_PRESETS.aurora;
     ctx.fillStyle = preset.outer;
     ctx.fillRect(0, 0, W_CSS, H_CSS);
-    const cx = W_CSS * TUNE.bgGradientCenterX;
-    const cy = H_CSS * TUNE.bgGradientCenterY;
-    const r = W_CSS * TUNE.bgGradientRadius;
+    // Subtle drift of the center + radius — same math as custom-gradient
+    const t = performance.now() / 1000;
+    const drift = TUNE.bgDriftEnabled ? TUNE.bgDriftAmount : 0;
+    const driftR = TUNE.bgDriftEnabled ? TUNE.bgDriftRadiusAmount : 0;
+    const dx = Math.sin(t * TUNE.bgDriftSpeed) * drift;
+    const dy = Math.cos(t * TUNE.bgDriftSpeed * 0.73) * drift;
+    const dr = Math.sin(t * TUNE.bgDriftSpeed * 0.5) * driftR;
+    const cx = W_CSS * (TUNE.bgGradientCenterX + dx);
+    const cy = H_CSS * (TUNE.bgGradientCenterY + dy);
+    const r  = W_CSS * (TUNE.bgGradientRadius + dr);
     const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, r);
     for (const [stop, color] of preset.stops) g.addColorStop(stop, color);
     ctx.fillStyle = g;
@@ -2324,6 +2504,15 @@ const voice = {
       return this._fakeSpeak(text);
     }
 
+    // On mobile, the Web Audio analyser graph adds processing artifacts that
+    // make the voice sound compressed/tinny. Detect once and skip the graph
+    // on touch devices — let the <audio> element play directly through the
+    // system. We lose real waveform-driven glow, but the synthetic envelope
+    // sounds the same to the user and the audio quality stays pristine.
+    const isMobile = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+                   || ('ontouchstart' in window)
+                   || (navigator.maxTouchPoints > 0);
+
     return new Promise((resolve) => {
       this.ttsActive = true;
       const audio = new Audio();
@@ -2332,29 +2521,34 @@ const voice = {
 
       let analyser = null, dataArray = null;
       let usingAnalyser = false;
-      try {
-        if (!this.audioCtx) {
-          this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!isMobile) {
+        try {
+          if (!this.audioCtx) {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
+          if (!this.playbackAnalyser) {
+            this.playbackAnalyser = this.audioCtx.createAnalyser();
+            this.playbackAnalyser.fftSize = 256;
+            this.playbackAnalyser.smoothingTimeConstant = 0.7;
+            this.playbackGain = this.audioCtx.createGain();
+            this.playbackGain.gain.value = TUNE.ttsVolume ?? 1.0;
+            this.playbackGain.connect(this.audioCtx.destination);
+          }
+          analyser = this.playbackAnalyser;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const sourceNode = this.audioCtx.createMediaElementSource(audio);
+          sourceNode.connect(analyser);
+          analyser.connect(this.playbackGain);
+          usingAnalyser = true;
+        } catch (e) {
+          console.warn('[voice] analyser path failed, using plain audio:', e.message);
+          audio.volume = TUNE.ttsVolume ?? 1.0;
         }
-        if (this.audioCtx.state === 'suspended') {
-          this.audioCtx.resume().catch(() => {});
-        }
-        if (!this.playbackAnalyser) {
-          this.playbackAnalyser = this.audioCtx.createAnalyser();
-          this.playbackAnalyser.fftSize = 256;
-          this.playbackAnalyser.smoothingTimeConstant = 0.7;
-          this.playbackGain = this.audioCtx.createGain();
-          this.playbackGain.gain.value = TUNE.ttsVolume ?? 1.0;
-          this.playbackGain.connect(this.audioCtx.destination);
-        }
-        analyser = this.playbackAnalyser;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const sourceNode = this.audioCtx.createMediaElementSource(audio);
-        sourceNode.connect(analyser);
-        analyser.connect(this.playbackGain);
-        usingAnalyser = true;
-      } catch (e) {
-        console.warn('[voice] analyser path failed, using plain audio:', e.message);
+      } else {
+        // Mobile: plain audio element, full volume
         audio.volume = TUNE.ttsVolume ?? 1.0;
       }
 
@@ -2868,6 +3062,25 @@ bgGradR.addEventListener('input', () => {
   bgGradRV.textContent = TUNE.bgGradientRadius.toFixed(2);
 });
 
+// Drift controls
+const bgDriftOn   = document.getElementById('ctl-bg-drift-on');
+const bgDriftAmt  = document.getElementById('ctl-bg-drift-amt');
+const bgDriftAmtV = document.getElementById('ctl-bg-drift-amt-v');
+const bgDriftSp   = document.getElementById('ctl-bg-drift-speed');
+const bgDriftSpV  = document.getElementById('ctl-bg-drift-speed-v');
+bgDriftOn.value = TUNE.bgDriftEnabled ? '1' : '0';
+bgDriftOn.addEventListener('change', () => {
+  TUNE.bgDriftEnabled = bgDriftOn.value === '1';
+});
+bgDriftAmt.addEventListener('input', () => {
+  TUNE.bgDriftAmount = parseFloat(bgDriftAmt.value);
+  bgDriftAmtV.textContent = TUNE.bgDriftAmount.toFixed(3);
+});
+bgDriftSp.addEventListener('input', () => {
+  TUNE.bgDriftSpeed = parseFloat(bgDriftSp.value);
+  bgDriftSpV.textContent = TUNE.bgDriftSpeed.toFixed(2);
+});
+
 // Glow color picker (converts hex to vec3 0..1 for shader)
 const glowColorInput = document.getElementById('ctl-glow-color');
 function hexToVec3(hex) {
@@ -3184,6 +3397,39 @@ if (ttsVolSlider) {
   document.addEventListener('touchend', cancel);
   document.addEventListener('touchcancel', cancel);
   document.addEventListener('touchmove', cancel);
+})();
+
+// ─── Three-finger tap → toggle native fullscreen (hides browser chrome) ───
+// Most mobile browsers won't let JS hide the address bar without the
+// Fullscreen API. A 3-finger tap is the trigger gesture: easy to remember,
+// hard to do accidentally. Tap again to exit.
+(function setupThreeFingerFullscreen() {
+  function toggleNativeFullscreen() {
+    const el = document.documentElement;
+    const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (isFs) {
+      const exitFn = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exitFn) exitFn.call(document);
+    } else {
+      const reqFn = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (reqFn) {
+        reqFn.call(el).catch(err => console.warn('[fs] denied:', err.message));
+      }
+    }
+  }
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 3) {
+      e.preventDefault();
+      toggleNativeFullscreen();
+    }
+  }, { passive: false });
+  // Desktop fallback: F key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      toggleNativeFullscreen();
+    }
+  });
 })();
 
 // In fullscreen mode, reload on orientation change so the canvas resizes
