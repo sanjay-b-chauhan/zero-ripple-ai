@@ -4,10 +4,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#c8d4cc">
+<!-- Theme/UI bar colors match the mint outer gradient so Chrome's URL bar
+     and iOS status bar blend with the page instead of showing a contrasting
+     black/grey strip. -->
+<meta name="theme-color" content="#e6efd9">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
+<!-- Force a fresh load every time. We don't ship versioned assets so each
+     visit should re-fetch. Without this, Samsung Chrome / iOS Safari hold
+     the old HTML aggressively and changes don't show up. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Zero</title>
 </head>
 <body>
@@ -39,15 +48,24 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 100%; height: 100%; overflow: hidden;
+    /* Belt-and-suspenders: pin to the dynamic viewport so when iOS Safari
+       collapses its URL bar there's no extra scroll area exposed. */
+    height: 100dvh;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
   }
   body {
-    background: #c8d4cc;
+    background: #e6efd9;
     font-family: "Inter Tight", "SF Pro Display", -apple-system, system-ui, sans-serif;
     display: flex; align-items: center; justify-content: center;
     min-height: 100vh;
+    min-height: 100dvh;
     user-select: none; -webkit-user-select: none;
     overscroll-behavior: none;
     -webkit-touch-callout: none;
+    /* Prevent the page from being scrollable on touch — kills the
+       rubber-band that sometimes exposes a black strip on Android. */
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   }
 
   /* ─── Default layout: iPhone 17 Pro mockup, black titanium ─── */
@@ -149,27 +167,39 @@
      reads getBoundingClientRect() on #screen automatically picks up the new
      dimensions, so the source canvas, shader, mic position, etc. all work
      identically. We're only changing the visual chrome around them. */
+  /* Outer body color = mint outer gradient color. So if there's ever a
+     1px gap between phone and viewport edge (Samsung Chrome gesture bar,
+     iOS Safari URL/tab bar transition), the user sees mint, not black. */
   body.fullscreen-mode { background: #e6efd9; }
+  html.fullscreen-mode { background: #e6efd9; }
   body.fullscreen-mode .phone {
+    /* position: fixed + inset: 0 is the most reliable cross-browser way to
+       fill the visible viewport. It works around Samsung Internet not
+       supporting `100lvh`, iOS Safari's URL-bar resize, and avoids any
+       flexbox centering quirks. The vh/dvh/lvh stack is a fallback in case
+       a browser doesn't honor inset:0 for some reason. */
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
     width: 100vw; height: 100vh;
-    /* Use 100lvh so the gradient extends edge-to-edge INCLUDING the iOS
-       home-indicator safe area at the bottom. 100dvh excludes that, which
-       was leaving a visible black band beneath the gradient. */
-    width: 100dvw; height: 100lvh;
-    background: transparent;
+    width: 100dvw; height: 100dvh;
+    height: 100lvh;
+    background: #e6efd9;
     border-radius: 0;
     padding: 0;
     box-shadow: none;
-    position: fixed; top: 0; left: 0;
   }
   body.fullscreen-mode .phone::before,
   body.fullscreen-mode .phone::after { display: none; }
   body.fullscreen-mode .screen {
     border-radius: 0;
     width: 100%; height: 100%;
+    /* Override the default #0a0a0a so any uncovered area (during canvas
+       resize, etc.) shows the mint outer color instead of a black band. */
+    background: #e6efd9;
+    box-shadow: none;
   }
   body.fullscreen-mode .island { display: none; }
-  /* In fullscreen mode, respect safe-area for mic position */
+  /* Mic respects the safe area so it never lands under iOS Safari's tab
+     bar or the Android gesture indicator. */
   body.fullscreen-mode .mic-wrap {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
@@ -1124,6 +1154,27 @@
 <div class="hint"></div>
 
 <script>
+/* ============================================================
+   FRESH-LOAD RESET
+   Wipe any persisted preferences (script name, layout mode, etc.)
+   so every page load starts from defaults. Requested behavior:
+   the user wants to never see stale state from a previous session
+   or a cached build.
+   ============================================================ */
+try { localStorage.clear(); } catch (_) { /* private mode etc. */ }
+try { sessionStorage.clear(); } catch (_) {}
+
+/* iOS Safari URL-bar hide trick: scroll to 1px after load. Modern
+   iOS Safari mostly ignores this, but it doesn't hurt and it does
+   help in some embedded browser contexts. The real fix for iOS
+   fullscreen is "Add to Home Screen" — Apple does not allow web
+   pages to programmatically hide Safari's chrome. */
+window.addEventListener('load', () => {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    setTimeout(() => window.scrollTo(0, 1), 0);
+  }
+});
+
 /* ============================================================
    SCRIPT
    Each user turn carries `essence` (1, 2 distilled words that
