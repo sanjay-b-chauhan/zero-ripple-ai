@@ -167,7 +167,11 @@
      Critical: use 100dvh (dynamic viewport height) so the canvas fills past
      the mobile browser's bottom navigation bar instead of leaving a gap. */
   body.fullscreen-mode {
-    background: #0a0a0a;
+    /* Was #0a0a0a — that black was leaking through any gap below the
+       canvas (mobile home-indicator safe area, Samsung gesture bar) and
+       reading as a black band at the bottom. Use the mint outer gradient
+       color so any uncovered pixel blends with the canvas instead. */
+    background: #e6efd9;
     /* Override the centering flex from default body styling */
     display: block;
     padding: 0;
@@ -177,11 +181,18 @@
     width: 100vw;
     height: 100vh;
     height: 100dvh;
+    /* 100lvh = largest viewport (includes safe area + browser-UI area).
+       Stacking it last means supporting browsers extend the body all the
+       way to the bottom edge, eliminating the black band entirely. */
+    height: 100lvh;
   }
   body.fullscreen-mode .phone {
     width: 100vw;
     height: 100vh;
     height: 100dvh;
+    /* Same reasoning: 100lvh wins where supported so the canvas physically
+       reaches the bottom edge of the device. */
+    height: 100lvh;
     background: transparent;
     border-radius: 0;
     padding: 0;
@@ -198,7 +209,10 @@
     width: 100%;
     height: 100%;
     box-shadow: none;
-    background: transparent;
+    /* Was transparent but the underlying .screen default is #0a0a0a which
+       still won the cascade on some Android Chrome builds. Pin to mint so
+       there is no path to a black flash even mid-resize. */
+    background: #e6efd9;
   }
   body.fullscreen-mode .island { display: none; }
   /* In fullscreen mode, respect safe-area for mic position */
@@ -2530,13 +2544,136 @@ let lastVoiceEventAt = 0;
 // Essence word queue for current user turn: words pop one-by-one as ripples emit.
 // Set by startTalk(), drained by emitVoiceEvent().
 let essenceQueue = [];
+// Tracks which essence words have already been spawned this turn so we
+// don't double-emit the same word if recognition fires twice.
+let essenceFired = new Set();
+
+/* ============================================================
+   Speech recognition: match the user's spoken words to the
+   current turn's essence list. When the user actually says one
+   of the essence words, spawn the floating word immediately.
+   Falls back gracefully if the Web Speech API is unsupported.
+   ============================================================ */
+const speechMatcher = {
+  recog: null,
+  available: false,
+  active: false,
+  init() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      console.warn('[speech] Web Speech API unavailable — falling back to timer-based word emission');
+      this.available = false;
+      return;
+    }
+    this.available = true;
+    this.SR = SR;
+  },
+  // Normalise a word for matching: lowercase, strip punctuation/apostrophes
+  normalise(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  },
+  // Match a single transcribed word against an essence target (with prefix forgiveness)
+  isMatch(spoken, target) {
+    const a = this.normalise(spoken);
+    const b = this.normalise(target);
+    if (!a || !b) return false;
+    if (a === b) return true;
+    // Forgive simple stemming: "designs" matches "design", "posting" matches "post"
+    if (a.length >= b.length && a.startsWith(b)) return true;
+    if (b.length >= a.length && b.startsWith(a) && a.length >= 3) return true;
+    return false;
+  },
+  start(onWordSpoken) {
+    if (!this.available || this.active) return;
+    try {
+      this.recog = new this.SR();
+      this.recog.continuous = true;
+      this.recog.interimResults = true;
+      this.recog.lang = 'en-US';
+      this.recog.maxAlternatives = 1;
+      // Track which words we've already passed to the callback so each
+      // distinct spoken word fires at most once per recognition session.
+      const spokenSeen = new Set();
+      this.recog.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const transcript = result[0].transcript || '';
+          // Split into words, take the most recent ones we haven't seen yet
+          const tokens = transcript.trim().split(/\s+/);
+          for (const tok of tokens) {
+            const key = this.normalise(tok);
+            if (!key) continue;
+            if (spokenSeen.has(key)) continue;
+            // For interim results, only register words that appear far enough
+            // into the transcript (i.e. not the last token, which may still
+            // be in flight). For final results, register everything.
+            if (!result.isFinal && tok === tokens[tokens.length - 1]) continue;
+            spokenSeen.add(key);
+            onWordSpoken(tok);
+          }
+        }
+      };
+      this.recog.onerror = (e) => {
+        // 'no-speech' and 'aborted' are normal — log only the real ones
+        if (e.error && e.error !== 'no-speech' && e.error !== 'aborted') {
+          console.warn('[speech] error:', e.error);
+        }
+      };
+      this.recog.onend = () => { this.active = false; };
+      this.recog.start();
+      this.active = true;
+    } catch (e) {
+      console.warn('[speech] start failed:', e.message);
+      this.active = false;
+    }
+  },
+  stop() {
+    if (this.recog && this.active) {
+      try { this.recog.stop(); } catch (e) {}
+    }
+    this.active = false;
+    this.recog = null;
+  },
+};
+speechMatcher.init();
+
+/* Called when a transcribed word arrives. If it matches an essence keyword
+   in the current queue, spawn that floating word right now. */
+function onUserSpokeWord(spokenToken) {
+  if (essenceQueue.length === 0) return;
+  // Find first essence word that matches
+  for (let i = 0; i < essenceQueue.length; i++) {
+    const candidate = essenceQueue[i];
+    if (essenceFired.has(candidate)) continue;
+    if (speechMatcher.isMatch(spokenToken, candidate)) {
+      // Spawn this word immediately
+      essenceFired.add(candidate);
+      essenceQueue.splice(i, 1);
+      const nowS = performance.now() / 1000;
+      ui.floatWords.push({
+        text: candidate,
+        spawnTime: nowS,
+        xUV: MIC_UV_X + (Math.random() - 0.5) * 0.06,
+        riseSpeed: TUNE.wordRiseSpeed + (Math.random() - 0.5) * TUNE.wordRiseSpeedJitter,
+        swayPhase: Math.random() * Math.PI * 2,
+        ripple: null,  // not tied to a specific ripple — free-floating
+      });
+      // Also spawn a small ripple so the word has visual weight
+      spawnRipple(0.7, 1.0);
+      return;
+    }
+  }
+}
 
 function startTalking() {
   isTalking = true;
   lastVoiceEventAt = performance.now() / 1000;
+  // Begin live speech recognition for word-level matching
+  speechMatcher.start(onUserSpokeWord);
 }
 function stopTalking() {
   isTalking = false;
+  speechMatcher.stop();
 }
 
 /* Called by the voice analyser whenever it detects a salient voice event:
@@ -2563,9 +2700,13 @@ function emitVoiceEvent(pitchHz, vol) {
 
   const ripple = spawnRipple(intensity, size);
 
-  // Maybe attach a floating word
-  if (essenceQueue.length > 0 && Math.random() < TUNE.wordEmitChance) {
+  // Maybe attach a floating word — but only if speech recognition is NOT
+  // active. When speech recognition is running, words are spawned by
+  // onUserSpokeWord() at the exact moment the user says them, not on a
+  // volume-event timer.
+  if (!speechMatcher.active && essenceQueue.length > 0 && Math.random() < TUNE.wordEmitChance) {
     const word = essenceQueue.shift();
+    essenceFired.add(word);
     ui.floatWords.push({
       text: word,
       spawnTime: nowS,
@@ -3091,6 +3232,7 @@ function startTalk() {
 
   // Load essence words for this turn into the queue
   essenceQueue = (turn.essence || []).slice();
+  essenceFired = new Set();
 
   micBtn.classList.add('active');
   setPttLabel('');
