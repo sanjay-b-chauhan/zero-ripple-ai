@@ -166,7 +166,10 @@
      Critical: use 100dvh (dynamic viewport height) so the canvas fills past
      the mobile browser's bottom navigation bar instead of leaving a gap. */
   body.fullscreen-mode {
-    background: #0a0a0a;
+    /* Mint (gradient outer) instead of black — any pixel the canvas
+       doesn't cover (during resize, safe-area, etc.) shows mint, not a
+       black band. */
+    background: #e6efd9;
     display: block;
     padding: 0;
     margin: 0;
@@ -182,7 +185,7 @@
     width: 100vw;
     height: 100vh;
     height: 100lvh;
-    background: transparent;
+    background: #e6efd9;
     border-radius: 0;
     padding: 0;
     box-shadow: none;
@@ -197,7 +200,7 @@
     width: 100%;
     height: 100%;
     box-shadow: none;
-    background: transparent;
+    background: #e6efd9;
   }
   body.fullscreen-mode .island { display: none; }
   /* In fullscreen mode, respect safe-area for mic position */
@@ -213,10 +216,9 @@
     display: block;
   }
 
-  /* Invisible click target over the "zero" logo painted on the canvas.
-     Coords match drawImage(logoImg, (W_CSS - 60)/2, 64, 60, ~17.3) — we
-     use a slightly larger hit area (90×44) so it's tap-friendly on mobile
-     per Apple's 44px minimum guidance. */
+  /* Invisible click target over the canvas-rendered "zero" logo. Click
+     toggles native fullscreen (hides browser chrome). 90×44 hit area is
+     tap-friendly per Apple's 44px minimum. */
   #logo-hotspot {
     position: absolute;
     top: 52px;
@@ -1209,16 +1211,19 @@
       <span class="island-camera" aria-hidden="true"></span>
       <span class="island-sensor" aria-hidden="true"></span>
     </div>
-    <!-- Invisible hotspot covering the canvas-rendered "zero" logo at the
-         top of the screen. Click toggles native fullscreen (hides browser
-         chrome). Sized larger than the visual logo so it's easy to hit on
-         mobile. -->
+    <!-- Click the "zero" logo at the top of the screen to toggle native
+         fullscreen (hides browser chrome). Invisible button overlaying
+         the canvas-rendered logo. -->
     <button id="logo-hotspot" type="button" aria-label="Toggle fullscreen"></button>
 
     <canvas id="gl-canvas"></canvas>
     <!-- Hidden video for background loop. Drawn to canvas every frame.
          muted + playsinline + autoplay + loop is required for mobile autoplay. -->
-    <video id="bg-video" muted playsinline autoplay loop preload="auto"
+    <!-- `loop` is OFF on purpose. Native loop seeks back to t=0 which
+         shows 1–2 stale/white frames on most decoders. We drive the
+         loop in JS via the `ended` listener (see further down) so the
+         seam is invisible. -->
+    <video id="bg-video" muted playsinline autoplay preload="auto"
            style="display:none" aria-hidden="true"></video>
 
     <div class="mic-wrap">
@@ -1465,38 +1470,70 @@ const SCRIPTS = {
   'reel-v2': [
     { who: 'zero', text: "Hey. What's on your mind today?",
       audio: 'voices/reelv2-01.mp3' },
+    // "Just putting some design stuff live in some time on socials."
+    // ~0.8s before "design" lands, ~3.2s before "socials"
     { who: 'user', text: "Just putting some design stuff live in some time on socials.",
-      essence: ["going", "live"] },
+      essence: [
+        { word: "design",  at: 0.9 },
+        { word: "socials", at: 3.3 },
+      ]},
 
     { who: 'zero', text: "How's it feeling?",
       audio: 'voices/reelv2-02.mp3' },
+    // "Weird. But good weird. Atul Bhai told me to just post our previous exploration, so I'm posting it."
+    // beats: weird(0.2)... pause ... good weird(1.4)... pause ... Atul Bhai(2.4)... posting(6.5)
     { who: 'user', text: "Weird. But good weird. Atul Bhai told me to just post our previous exploration, so I'm posting it.",
-      essence: ["good", "weird"] },
+      essence: [
+        { word: "weird",       at: 0.4 },
+        { word: "good weird",  at: 1.4 },
+        { word: "Atul Bhai",   at: 2.6 },
+        { word: "posting",     at: 6.5 },
+      ]},
 
     { who: 'zero', text: "That's usually how the good ones start.",
       audio: 'voices/reelv2-03.mp3' },
+    // "Yeah. Also Zero, are you ready for the beta release?"
+    // beats: yeah(0.1)... also Zero(0.7)... ready(1.5)... beta release(2.4)
     { who: 'user', text: "Yeah. Also Zero, are you ready for the beta release?",
-      essence: ["beta", "release"] },
+      essence: [
+        { word: "ready",   at: 1.5 },
+        { word: "beta",    at: 2.4 },
+        { word: "release", at: 3.0 },
+      ]},
 
     { who: 'zero', text: "I think the real question is whether the world is ready for me.",
       audio: 'voices/reelv2-04.mp3' },
+    // "Oh my god, that's so good." — short reaction, mostly delight
     { who: 'user', text: "Oh my god, that's so good.",
-      essence: ["so", "good"] },
+      essence: [
+        { word: "so good", at: 1.2 },
+      ]},
 
     { who: 'zero', text: "Yeah. I mean, just keep telling that story. The one Atul Bhai saw in you.",
       audio: 'voices/reelv2-05.mp3' },
+    // "But what if nobody else sees it? What if it just goes out and nothing happens?"
     { who: 'user', text: "But what if nobody else sees it? What if it just goes out and nothing happens?",
-      essence: ["nothing", "happens"] },
+      essence: [
+        { word: "nobody",         at: 0.7 },
+        { word: "nothing happens", at: 4.2 },
+      ]},
 
     { who: 'zero', text: "Mm, fair. So what would something happening look like, for you?",
       audio: 'voices/reelv2-06.mp3' },
+    // "I don't know. One person messaging me. One person saying it made them feel something."
     { who: 'user', text: "I don't know. One person messaging me. One person saying it made them feel something.",
-      essence: ["feel", "something"] },
+      essence: [
+        { word: "one person",     at: 1.4 },
+        { word: "feel something", at: 5.5 },
+      ]},
 
     { who: 'zero', text: "Right. That already happened in this room, ten minutes ago.",
       audio: 'voices/reelv2-07.mp3' },
+    // "...damn." — short, lands ~0.5s after mic press
     { who: 'user', text: "...damn.",
-      essence: ["damn"] },
+      essence: [
+        { word: "damn", at: 0.6 },
+      ]},
 
     { who: 'zero', text: "Yeah. Go post it.",
       audio: 'voices/reelv2-08.mp3' },
@@ -1832,8 +1869,10 @@ function paintSource() {
                       && TUNE.bgImage && TUNE.bgImage.complete;
 
   if (isVideoMode) {
-    // Outer fill (neutral so blurred edges don't show black)
-    ctx.fillStyle = '#0a0a0a';
+    // Outer fill = mint outer gradient color. If the video doesn't fully
+    // cover the canvas (mid-resize, blur edge fade, decoder hiccup), the
+    // user sees mint instead of a black band.
+    ctx.fillStyle = '#e6efd9';
     ctx.fillRect(0, 0, W_CSS, H_CSS);
     const vid = TUNE.bgVideo;
     const blurPx = Math.max(0, TUNE.bgImageBlur);
@@ -2479,6 +2518,44 @@ glCanvas.style.width  = W_CSS + 'px';
 glCanvas.style.height = H_CSS + 'px';
 gl.viewport(0, 0, glCanvas.width, glCanvas.height);
 
+/* ─── Resize sync ───
+   The canvas backing store is sized once at boot from W_CSS / H_CSS.
+   On mobile, viewport changes (URL-bar collapse, orientation, safe-area
+   re-evaluation) make the layout grow but the canvas keeps its initial
+   inline px size → the bottom of the screen shows uncovered body bg as
+   a "black bottom band." This handler re-syncs every canvas/uniform
+   that depends on H_CSS so the gradient stays edge-to-edge. */
+function resizeCanvasToViewport() {
+  const m = measureScreen();
+  if (Math.abs(m.w - W_CSS) < 0.5 && Math.abs(m.h - H_CSS) < 0.5) return;
+  W_CSS = m.w; H_CSS = m.h;
+
+  // Source 2D canvas
+  src.width  = Math.floor(W_CSS * DPR);
+  src.height = Math.floor(H_CSS * DPR);
+  sctx.setTransform(1, 0, 0, 1, 0, 0);
+  sctx.scale(DPR, DPR);
+
+  // GL canvas — update BOTH the backing buffer AND the inline CSS px
+  // (the latter is what was pinning it to its original size).
+  glCanvas.width  = Math.floor(W_CSS * DPR);
+  glCanvas.height = Math.floor(H_CSS * DPR);
+  glCanvas.style.width  = W_CSS + 'px';
+  glCanvas.style.height = H_CSS + 'px';
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  if (typeof uRes !== 'undefined' && uRes) {
+    gl.uniform2f(uRes, glCanvas.width, glCanvas.height);
+  }
+
+  if (typeof refreshMicUV === 'function') refreshMicUV();
+}
+window.addEventListener('resize', resizeCanvasToViewport);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvasToViewport, 300));
+// visualViewport fires on mobile address-bar show/hide where 'resize' doesn't.
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resizeCanvasToViewport);
+}
+
 function uploadTex() {
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
@@ -2555,7 +2632,57 @@ let lastVoiceEventAt = 0;
 
 // Essence word queue for current user turn: words pop one-by-one as ripples emit.
 // Set by startTalk(), drained by emitVoiceEvent().
-let essenceQueue = [];
+// Timed essence scheduler.
+// Each user turn supplies essence as either:
+//   - legacy: ["word1", "word2"]  -> emits on volume events as before
+//   - timed:  [{ word: "beta", at: 2.4 }, ...]  -> emits at scheduled offset
+//             from when the user pushed the mic (clock starts at startTalk())
+let essenceScheduled = [];   // [{ word, at, emitted: false }, ...]
+let essenceLegacyQueue = []; // ["word1", "word2"] — fallback for non-timed
+let essenceTurnStartedAt = 0;
+
+function resetEssenceForTurn(turn) {
+  essenceScheduled = [];
+  essenceLegacyQueue = [];
+  if (!turn || !turn.essence) return;
+  for (const e of turn.essence) {
+    if (typeof e === 'string') {
+      essenceLegacyQueue.push(e);
+    } else if (e && typeof e.word === 'string' && typeof e.at === 'number') {
+      essenceScheduled.push({ word: e.word, at: e.at, emitted: false });
+    }
+  }
+}
+
+function spawnFloatWord(word, ripple) {
+  const nowS = performance.now() / 1000;
+  ui.floatWords.push({
+    text: word,
+    spawnTime: nowS,
+    xUV: MIC_UV_X + (Math.random() - 0.5) * 0.06,
+    riseSpeed: TUNE.wordRiseSpeed + (Math.random() - 0.5) * TUNE.wordRiseSpeedJitter,
+    swayPhase: Math.random() * Math.PI * 2,
+    ripple: ripple || null,
+  });
+}
+
+// Called every frame while user is holding mic. Checks if any scheduled
+// essence word is past its scheduled time and not yet emitted. Emits one
+// per frame max so they don't all pop together if mic was pressed late.
+function tickEssenceScheduler() {
+  if (!isTalking || essenceScheduled.length === 0) return;
+  const elapsed = (performance.now() / 1000) - essenceTurnStartedAt;
+  for (const e of essenceScheduled) {
+    if (e.emitted) continue;
+    if (elapsed >= e.at) {
+      e.emitted = true;
+      // Spawn a tiny ripple with each word for visual weight
+      const r = spawnRipple(0.6, 1.0);
+      spawnFloatWord(e.word, r);
+      return; // one per frame
+    }
+  }
+}
 
 function startTalking() {
   isTalking = true;
@@ -2589,17 +2716,12 @@ function emitVoiceEvent(pitchHz, vol) {
 
   const ripple = spawnRipple(intensity, size);
 
-  // Maybe attach a floating word
-  if (essenceQueue.length > 0 && Math.random() < TUNE.wordEmitChance) {
-    const word = essenceQueue.shift();
-    ui.floatWords.push({
-      text: word,
-      spawnTime: nowS,
-      xUV: MIC_UV_X + (Math.random() - 0.5) * 0.06,
-      riseSpeed: TUNE.wordRiseSpeed + (Math.random() - 0.5) * TUNE.wordRiseSpeedJitter,
-      swayPhase: Math.random() * Math.PI * 2,
-      ripple,
-    });
+  // Legacy untimed-essence path: emit on volume events for any user turn
+  // that uses the old ["word1", "word2"] essence format. Timed essences
+  // (newer scripts) go through tickEssenceScheduler() instead.
+  if (essenceLegacyQueue.length > 0 && Math.random() < TUNE.wordEmitChance) {
+    const word = essenceLegacyQueue.shift();
+    spawnFloatWord(word, ripple);
   }
 }
 
@@ -3096,7 +3218,8 @@ function userTurnEnded() {
   talker = null;
   micBtn.classList.remove('active');
   setPttLabel('');
-  essenceQueue = [];
+  essenceScheduled = [];
+  essenceLegacyQueue = [];
 
   const turn = currentTurn();
   if (!turn || turn.who !== 'user') { updateMicState(); return; }
@@ -3115,8 +3238,9 @@ function startTalk() {
   if (!turn || turn.who !== 'user') return;
   if (isTalking) return;
 
-  // Load essence words for this turn into the queue
-  essenceQueue = (turn.essence || []).slice();
+  // Set up essence for this turn (timed or legacy, depending on format)
+  resetEssenceForTurn(turn);
+  essenceTurnStartedAt = performance.now() / 1000;
 
   micBtn.classList.add('active');
   setPttLabel('');
@@ -3181,7 +3305,8 @@ function doReset() {
   ui.essencePhase = 'idle';
   ui.essenceText = null;
   ui.floatWords.length = 0;
-  essenceQueue = [];
+  essenceScheduled = [];
+  essenceLegacyQueue = [];
   micBtn.classList.remove('active', 'disabled');
   step = 0; started = false;
   clearText();
@@ -3300,6 +3425,14 @@ if (typeof BG_VIDEO_DATA === 'string') {
     bgVideoEl.play().catch(err => {
       console.warn('[bg-video] autoplay deferred until user gesture:', err.message);
     });
+  });
+  // Seamless loop: native `loop` causes a 1–2 frame stale/white flash at
+  // the seek-back boundary on most decoders. We listen for `ended` and
+  // re-play from a tiny non-zero offset, which skips the often-broken
+  // "first frame" the encoder placed exactly at t=0.
+  bgVideoEl.addEventListener('ended', () => {
+    bgVideoEl.currentTime = 0.05;
+    bgVideoEl.play().catch(() => {});
   });
 }
 
@@ -3833,13 +3966,11 @@ if (ttsVolSlider) {
 })();
 
 // ─── Click "zero" logo → toggle native fullscreen ───
-// Triggers the Fullscreen API on a real click (preserves user-activation,
-// which the browser requires before granting fullscreen — that's why the
-// previous touch-based gestures were being silently denied).
-//
-// Caveat: iOS Safari only allows fullscreen on <video> elements, so on
-// iPhone this falls back to a hint suggesting Add to Home Screen. Works
-// on Chrome (Android & desktop), Samsung Internet, Edge, Firefox.
+// Real `click` event preserves user-activation, which the browser requires
+// before granting fullscreen — that's why touch-only gestures were getting
+// silently denied. iOS Safari caveat: Fullscreen API only works on <video>,
+// so iPhone users get a hint to Add to Home Screen instead. Works on
+// Chrome (Android & desktop), Samsung Internet, Edge, Firefox.
 (function setupLogoFullscreen() {
   function toggleNativeFullscreen() {
     const el = document.documentElement;
@@ -3850,15 +3981,11 @@ if (ttsVolSlider) {
       return;
     }
     const reqFn = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (!reqFn) {
-      showFsHint('Tap Share → Add to Home Screen');
-      return;
-    }
+    if (!reqFn) { showFsHint('Tap Share → Add to Home Screen'); return; }
     const p = reqFn.call(el);
     if (p && p.catch) p.catch(() => showFsHint('Tap Share → Add to Home Screen'));
   }
 
-  // Tiny toast for feedback when fullscreen isn't available (iOS Safari).
   let hintEl = null, hintTimer = null;
   function showFsHint(text) {
     if (!hintEl) {
@@ -3885,7 +4012,7 @@ if (ttsVolSlider) {
     });
   }
 
-  // Desktop keyboard shortcut still works
+  // Desktop keyboard shortcut: F still toggles
   document.addEventListener('keydown', (e) => {
     if (e.key === 'f' || e.key === 'F') {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
@@ -3967,6 +4094,9 @@ function frame(now) {
     updateSyntheticVoice();
   }
 
+  // Tick the timed essence scheduler — emits words at scheduled offsets
+  tickEssenceScheduler();
+
   // Update debug HUD every ~4 frames
   if ((dbgFrame++ & 3) === 0) {
     dbgMic.textContent = voice.micActive ? 'ON' : 'OFF';
@@ -3976,7 +4106,7 @@ function frame(now) {
     dbgPitch.textContent = Math.round(ui.livePitch);
     dbgRipples.textContent = ripples.length;
     dbgWords.textContent = ui.floatWords.length;
-    dbgQueue.textContent = essenceQueue.length;
+    dbgQueue.textContent = essenceScheduled.filter(e => !e.emitted).length + essenceLegacyQueue.length;
     dbgTalking.textContent = isTalking ? 'YES' : 'no';
     dbgTalking.style.color = isTalking ? '#B2FFC4' : '#888';
   }
