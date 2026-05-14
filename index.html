@@ -2265,10 +2265,25 @@ function computeMicUV() {
   const micCenterY = mr.top + mr.height / 2 - sr.top;
   return micCenterY / H_CSS;
 }
-const MIC_UV_Y = computeMicUV();
-const MIC_UV_Y_PX = MIC_UV_Y * H_CSS;
+// `let` (not `const`) so we can refresh after the mobile viewport settles
+// (URL bar collapse, safe-area insets, orientation). Otherwise the cached
+// value drifts and the ripple originates above/below the actual mic.
+let MIC_UV_Y = computeMicUV();
+let MIC_UV_Y_PX = MIC_UV_Y * H_CSS;
+function refreshMicUV() {
+  MIC_UV_Y = computeMicUV();
+  MIC_UV_Y_PX = MIC_UV_Y * H_CSS;
+}
+// Re-measure after the first frame so we pick up the final viewport
+// (mobile address bar, safe-area insets, etc.).
+requestAnimationFrame(refreshMicUV);
+window.addEventListener('resize', refreshMicUV);
+window.addEventListener('orientationchange', () => setTimeout(refreshMicUV, 250));
 
 function spawnRipple(intensity, size) {
+  // Always re-read the live mic position so the ripple emits exactly from
+  // the button regardless of any layout changes since startup.
+  refreshMicUV();
   // Tiny jitter around the mic center so successive ripples don't perfectly stack
   const u = MIC_UV_X + (Math.random() - 0.5) * 0.02;
   const v = MIC_UV_Y + (Math.random() - 0.5) * 0.01;
