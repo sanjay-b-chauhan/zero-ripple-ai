@@ -149,14 +149,18 @@
      reads getBoundingClientRect() on #screen automatically picks up the new
      dimensions, so the source canvas, shader, mic position, etc. all work
      identically. We're only changing the visual chrome around them. */
-  body.fullscreen-mode { background: #0a0a0a; }
+  body.fullscreen-mode { background: #e6efd9; }
   body.fullscreen-mode .phone {
     width: 100vw; height: 100vh;
-    width: 100dvw; height: 100dvh;
+    /* Use 100lvh so the gradient extends edge-to-edge INCLUDING the iOS
+       home-indicator safe area at the bottom. 100dvh excludes that, which
+       was leaving a visible black band beneath the gradient. */
+    width: 100dvw; height: 100lvh;
     background: transparent;
     border-radius: 0;
     padding: 0;
     box-shadow: none;
+    position: fixed; top: 0; left: 0;
   }
   body.fullscreen-mode .phone::before,
   body.fullscreen-mode .phone::after { display: none; }
@@ -241,15 +245,27 @@
     background: transparent;
     border-radius: 999px;
     position: relative;
-    cursor: grab;
+    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     z-index: 1;
-    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    /* Snappy ease-out (no overshoot) so the button doesn't keep bouncing
+       after a tap. Touch devices can't clear :hover, so we also gate the
+       hover lift to fine pointers below. */
+    transition: transform 0.12s ease-out;
+    /* Disable browser-default touch behavior (double-tap zoom, scroll
+       interruption) so push-to-talk feels instant on mobile. */
+    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
     /* Soft drop shadow under the button — always present, intensifies on press */
     filter: drop-shadow(0 6px 14px rgba(var(--mic-shadow-color), 0.16))
             drop-shadow(0 2px 4px rgba(var(--mic-shadow-color), 0.10));
   }
-  .mic:hover { transform: translateY(-1px); }
+  /* Hover lift only on real pointers (mouse/trackpad) — on touch devices
+     the :hover state sticks after a tap, which made the button look like
+     it "moved up and stayed there." */
+  @media (hover: hover) and (pointer: fine) {
+    .mic:hover { transform: translateY(-1px); cursor: grab; }
+  }
   .mic.active {
     cursor: grabbing;
     transform: scale(0.96);
@@ -257,7 +273,9 @@
             drop-shadow(0 0 18px rgba(var(--mic-border-pulse), 0.45));
   }
   .mic.disabled { opacity: 0.55; cursor: not-allowed; }
-  .mic.disabled:hover { transform: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .mic.disabled:hover { transform: none; }
+  }
 
   /* Layer 1: glass body. Semi-transparent with backdrop blur picks up the
      gradient behind, then a subtle internal gradient gives the liquid feel. */
@@ -1359,7 +1377,7 @@ const TUNE = {
   fxLightCrestTint: [0.5, 0.85, 1.0],  // body glow color
 
   /* ─── Background ─── */
-  bgPreset: 'aurora',             // Gen-Z gradient by default (green/beige/blue/pink soft center)
+  bgPreset: 'mint',               // Mint cyan gradient by default
   /* Animated gradient drift — slow, subtle breathing of the center point and
      radius. Default on for the dreamy feel; set bgDriftEnabled false to lock
      the gradient in place. */
